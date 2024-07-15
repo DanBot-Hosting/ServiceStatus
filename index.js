@@ -1,6 +1,6 @@
 const { Client, Intents, MessageEmbed } = require('discord.js');
 const config = require("./config.json");
-const status = require("./serverStatus");
+const status = require("./ServerStatus");
 
 const client = new Client({
     intents: [Intents.FLAGS.MESSAGE_CONTENT, Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES]
