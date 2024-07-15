@@ -1,0 +1,45 @@
+{
+
+  "DiscordToken": "",
+
+  "HetrixToken": "hetrix api key",
+
+  "LiveStatusChannel": "channel to post message in",
+
+
+
+  "HetrixStatus": {
+
+    "Website": [
+
+      {
+
+        "name": "Example.com",
+
+        "data": "Monitor ID"
+
+      },
+
+      {
+
+        "name": "google.com",
+
+        "data": "Monitor ID"
+
+      }
+    ],
+
+
+
+    "Servers": [
+
+      {
+
+        "name": "Server 1",
+
+        "data": "Monitor ID"
+
+      }
+    ]
+  }
+}
