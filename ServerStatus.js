@@ -4,69 +4,55 @@ const { MessageEmbed } = require('discord.js');
 const nstatus = config.HetrixStatus;
 async function parse() {
     const toReturn = {};
+    const statsData = await Promise.all([
+        axios.get(`https://api.netweak.com/servers`, {
+            headers: { Authorization: `Bearer ${config.HetrixToken}` }
+        })
+    ]);
 
     for (let [title, data] of Object.entries(nstatus)) {
         const temp = [];
 
         for (let d of data) {
             let retries = 3;
-            let statsData, monitorData;
 
             while (retries > 0) {
                 try {
-                    [statsData, monitorData] = await Promise.all([
-                        axios.get(`https://api.hetrixtools.com/v1/${config.HetrixToken}/server/stats/${d.data}/`),
-                        axios.get(`https://api.hetrixtools.com/v3/uptime-monitors?id=${d.data}`, {
-                            headers: { Authorization: `Bearer ${config.HetrixToken}` }
-                        })
-                    ]);
-
-                    if (statsData.data.Stats && monitorData.data.monitors?.[0]) break; // Success!
-                    else throw new Error('Invalid or missing data from HetrixTools API');
+                    //console.log(statsData[0].data)
+                    if (statsData[0].data) break; // Success!
+                    else throw new Error('Invalid or missing data from Netweaks API');
 
                 } catch (error) {
                     console.error(`Error fetching data for ${d.name} (attempt ${4 - retries}): ${error.message}`);
                     retries--;
-                    await new Promise(resolve => setTimeout(resolve, 4000));
+                    await new Promise(resolve => setTimeout(resolve, 5000));
                 }
             }
 
             // If retries exhausted, add error message to temp
+            const monitorData = statsData[0].data.filter(item => item.id === d.data);
+
             if (!retries) {
-                temp.push(`${d.name}: 🔴 **Offline**, Uptime: ${monitorData.data.monitors?.[0].uptime}%`);
+                temp.push(`${d.name}: 🔴 **Offline**, Uptime: ${monitorData[0].uptime.month}%`);
                 continue;
             }
 
-            const now = Math.floor(Date.now() / 1000 / 60);
-            const status2 = statsData.data.Stats;
-
-            if (!status2 || !Array.isArray(status2)) {
-                console.error(`Invalid stats data for ${d.name}:`, status2);
-                continue; // Skip to the next node if stats are invalid
-            }
-
-            const closest = status2.reduce((prev, curr) =>
-                Math.abs(curr.Minute - now) < Math.abs(prev.Minute - now) ? curr : prev
-            );
-
-            const da = monitorData.data.monitors?.[0];
+            const da = monitorData[0];
 
             if (!da) {
                 console.error(`Monitor data not found for ${d.name}`);
                 continue; // Skip if monitor data is missing
             }
 
-            let serverUsage = `CPU: ${closest.CPU}%, RAM: ${closest.RAM}%, SSD: ${closest.Disk}%, Uptime: ${da.uptime}%`;
+            let serverUsage = `CPU: ${da.payload.load_cpu}%, RAM: ${da.payload.load_ram}%, SSD: ${da.payload.load_disk}%, Uptime: ${da.uptime.month}%`;
             let statusMessage = "";
 
-            if (da.monitor_status == "maint") {
-                statusMessage = "🟣 Maintenance ~ Returning Soon!";
-            } else if (da.monitor_status == "active") {
-                statusMessage = da.uptime_status == "up"
+            if (da.status == "online") {
+                statusMessage = da.status == "online"
                     ? `🟢 Online, ${serverUsage}`
-                    : `🔴 **Offline**, Uptime: ${da.uptime}%`;
+                    : `🔴 **Offline**, Uptime: ${da.uptime.month}%`;
             } else {
-                statusMessage = "❓ Unknown Status";
+                statusMessage = `🔴 **Offline**, Uptime: ${da.uptime.month}%`;
             }
 
             temp.push(`${d.name}: ${statusMessage}`); // Assuming statusMessage is constructed correctly
@@ -80,7 +66,7 @@ async function parse() {
 
 const getEmbed = async () => {
     let status = await parse();
-    let desc = "";
+    let desc = "*Uptime is based on 30days*\n";
 
     for (let [title, d] of Object.entries(status)) {
         if (Array.isArray(d)) {
